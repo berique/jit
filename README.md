@@ -1,6 +1,6 @@
 JIT
 ---
-*J*ust *I*nstall *I*t.
+**J**ust **I**nstall **I**t.
 
 Reason
 =======

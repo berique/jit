@@ -1,0 +1,99 @@
+#!/bin/bash
+function choice {
+    while true; do
+        read -p "$2 " yn
+        case $yn in
+            [Yy]* ) $1; break;;
+            [Nn]* ) exit;;
+            * ) echo "Please answer yes or no.";;
+        esac
+    done
+}
+function get_property_file {
+    default='en'
+    index=`echo | awk '{ print index("'"$LANG"'", ".")-1 }'`
+    filename=$LANG
+    if [[ $index -gt -1 ]]; then
+        filename=${filename:0:$index}
+    fi
+    propfile="i18n/$filename.properties"
+    if [[ ! -e $propfile ]]; then
+        index=`echo | awk '{ print index("'"$filename"'", "_")-1 }'`
+        filename=${filename:0:$index}
+        propfile="i18n/$filename.properties"
+        if [[ ! -e $propfile ]]; then
+            propfile="i18n/${default}.properties"
+        fi
+        
+    fi
+    echo $propfile
+}
+function get_property
+{
+    grep "^$1=" "$(get_property_file)" | cut -d'=' -f2-30
+}
+# source: http://superuser.com/a/496572
+function __wget() {
+    : ${DEBUG:=0}
+    local URL=$1
+    local tag="Connection: close"
+    local mark=0
+
+    if [ -z "${URL}" ]; then
+        printf "Usage: %s \"URL\" [e.g.: %s http://www.google.com/]" \
+               "${FUNCNAME[0]}" "${FUNCNAME[0]}"
+        return 1;
+    fi
+    read proto server path <<<$(echo ${URL//// })
+    DOC=/${path// //}
+    HOST=${server//:*}
+    PORT=${server//*:}
+    [[ x"${HOST}" == x"${PORT}" ]] && PORT=80
+    [[ $DEBUG -eq 1 ]] && echo "HOST=$HOST"
+    [[ $DEBUG -eq 1 ]] && echo "PORT=$PORT"
+    [[ $DEBUG -eq 1 ]] && echo "DOC =$DOC"
+
+    exec 3<>/dev/tcp/${HOST}/$PORT
+    echo -en "GET ${DOC} HTTP/1.1\r\nHost: ${HOST}\r\n${tag}\r\n\r\n" >&3
+    while read line; do
+        [[ $mark -eq 1 ]] && echo $line
+        if [[ "${line}" =~ "${tag}" ]]; then
+            mark=1
+        fi
+    done <&3
+    exec 3>&-
+}
+function installBrew {
+    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+}
+function installGettextOSX {
+    brew install gettext
+    brew link --force gettext
+}
+# source: http://stackoverflow.com/a/8597411/438405
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+        # ...
+        echo "Linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    # Mac OSX
+    if [[ ! `which brew` ]]; then
+        choice installBrew "$(get_property 'install_brew')"
+    else
+        echo "$(get_property 'brew_already_installed')"
+    fi
+elif [[ "$OSTYPE" == "cygwin" ]]; then
+        # POSIX compatibility layer and Linux environment emulation for Windows
+        echo "cygwin"
+elif [[ "$OSTYPE" == "msys" ]]; then
+        # Lightweight shell and GNU utilities compiled for Windows (part of MinGW)
+        echo "msys"
+elif [[ "$OSTYPE" == "win32" ]]; then
+        # I'm not sure this can happen.
+        echo "win32"
+elif [[ "$OSTYPE" == "freebsd"* ]]; then
+        # ...
+        echo "freebsd"
+else
+        # Unknown.
+        echo "unknown"
+fi
